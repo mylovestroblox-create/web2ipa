@@ -15,6 +15,21 @@ on:
         description: "Ссылка на сайт (пусто = использовать папку site/ из репозитория)"
         required: false
         default: ""
+      theme_color:
+        description: "Акцентный цвет (HEX, например #0A84FF)"
+        required: false
+        default: "#0A84FF"
+      appearance:
+        description: "Тема: system / light / dark"
+        required: false
+        type: choice
+        options: [system, light, dark]
+        default: system
+      show_toolbar:
+        description: "Показывать нижнюю панель навигации"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -31,8 +46,12 @@ jobs:
       - name: Write config
         env:
           URL: ${{ inputs.url }}
+          THEME: ${{ inputs.theme_color }}
+          APPEARANCE: ${{ inputs.appearance }}
+          TOOLBAR: ${{ inputs.show_toolbar }}
         run: |
-          jq -n --arg url "$URL" '{url: $url}' > App/Config.json
+          jq -n --arg url "$URL" --arg theme "$THEME" --arg ap "$APPEARANCE" --arg tb "$TOOLBAR" \
+            '{url: $url, themeColor: $theme, appearance: $ap, showToolbar: ($tb == "true")}' > App/Config.json
           mkdir -p site
           if [ -z "$(ls -A site 2>/dev/null)" ]; then
             echo "<!DOCTYPE html><html><body></body></html>" > site/index.html
