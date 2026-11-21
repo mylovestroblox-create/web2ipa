@@ -1,9 +1,9 @@
 {
-  "app_name": "My App",
-  "bundle_id": "com.example.webapp",
+  "app_name": "web2ipa",
+  "bundle_id": "com.web2.ipa",
   "url": "",
   "theme_color": "#0A84FF",
   "appearance": "system",
   "show_toolbar": true,
-  "nonce": "init"
+  "nonce": "defaults"
 }

@@ -6,11 +6,11 @@ on:
       app_name:
         description: "Название приложения"
         required: true
-        default: "My App"
+        default: "web2ipa"
       bundle_id:
         description: "Bundle ID (например com.example.myapp)"
         required: true
-        default: "com.example.webapp"
+        default: "com.web2.ipa"
       url:
         description: "Ссылка на сайт (пусто = использовать папку site/ из репозитория)"
         required: false
@@ -60,8 +60,8 @@ jobs:
         run: |
           if [ "$EVENT" = "push" ]; then
             J=build.json
-            NAME=$(jq -r '.app_name // "My App"' $J)
-            BUNDLE=$(jq -r '.bundle_id // "com.example.webapp"' $J)
+            NAME=$(jq -r '.app_name ' $J)
+            BUNDLE=$(jq -r '.bundle_id // "com.web2.ipa"' $J)
             URL=$(jq -r '.url // ""' $J)
             THEME=$(jq -r '.theme_color // "#0A84FF"' $J)
             AP=$(jq -r '.appearance // "system"' $J)
@@ -71,7 +71,7 @@ jobs:
             THEME="$I_THEME"; AP="$I_AP"; TB="$I_TB"
           fi
           NAME=$(printf '%s' "$NAME" | tr -d '\r\n')
-          case "$BUNDLE" in ""|*[!A-Za-z0-9.-]*) BUNDLE=com.example.webapp;; esac
+          case "$BUNDLE" in ""|*[!A-Za-z0-9.-]*) BUNDLE=com.web2.ipa;; esac
           case "$THEME" in \#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;; *) THEME="#0A84FF";; esac
           case "$AP" in system|light|dark) ;; *) AP=system;; esac
           {
