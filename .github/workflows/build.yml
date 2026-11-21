@@ -30,9 +30,17 @@ on:
         required: false
         type: boolean
         default: true
+  # Сборка из редактора: он обновляет site/index.html, а потом build.json
+  push:
+    branches: [main]
+    paths: [build.json]
 
 permissions:
   contents: write
+
+concurrency:
+  group: build-ipa
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -40,17 +48,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve settings
+        env:
+          EVENT: ${{ github.event_name }}
+          I_NAME: ${{ inputs.app_name }}
+          I_BUNDLE: ${{ inputs.bundle_id }}
+          I_URL: ${{ inputs.url }}
+          I_THEME: ${{ inputs.theme_color }}
+          I_AP: ${{ inputs.appearance }}
+          I_TB: ${{ inputs.show_toolbar }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            J=build.json
+            NAME=$(jq -r '.app_name // "My App"' $J)
+            BUNDLE=$(jq -r '.bundle_id // "com.example.webapp"' $J)
+            URL=$(jq -r '.url // ""' $J)
+            THEME=$(jq -r '.theme_color // "#0A84FF"' $J)
+            AP=$(jq -r '.appearance // "system"' $J)
+            TB=$(jq -r 'if has("show_toolbar") then .show_toolbar else true end' $J)
+          else
+            NAME="$I_NAME"; BUNDLE="$I_BUNDLE"; URL="$I_URL"
+            THEME="$I_THEME"; AP="$I_AP"; TB="$I_TB"
+          fi
+          NAME=$(printf '%s' "$NAME" | tr -d '\r\n')
+          case "$BUNDLE" in ""|*[!A-Za-z0-9.-]*) BUNDLE=com.example.webapp;; esac
+          case "$THEME" in \#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;; *) THEME="#0A84FF";; esac
+          case "$AP" in system|light|dark) ;; *) AP=system;; esac
+          {
+            echo "APP_NAME=$NAME"
+            echo "BUNDLE_ID=$BUNDLE"
+            echo "SITE_URL=$URL"
+            echo "THEME=$THEME"
+            echo "APPEARANCE=$AP"
+            echo "TOOLBAR=$TB"
+          } >> "$GITHUB_ENV"
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
       - name: Write config
-        env:
-          URL: ${{ inputs.url }}
-          THEME: ${{ inputs.theme_color }}
-          APPEARANCE: ${{ inputs.appearance }}
-          TOOLBAR: ${{ inputs.show_toolbar }}
         run: |
-          jq -n --arg url "$URL" --arg theme "$THEME" --arg ap "$APPEARANCE" --arg tb "$TOOLBAR" \
+          jq -n --arg url "$SITE_URL" --arg theme "$THEME" --arg ap "$APPEARANCE" --arg tb "$TOOLBAR" \
             '{url: $url, themeColor: $theme, appearance: $ap, showToolbar: ($tb == "true")}' > App/Config.json
           mkdir -p site
           if [ -z "$(ls -A site 2>/dev/null)" ]; then
@@ -64,9 +102,6 @@ jobs:
           fi
 
       - name: Generate Xcode project
-        env:
-          APP_NAME: ${{ inputs.app_name }}
-          BUNDLE_ID: ${{ inputs.bundle_id }}
         run: xcodegen generate
 
       - name: Build (unsigned)
@@ -98,7 +133,6 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          APP_NAME: ${{ inputs.app_name }}
         run: |
           gh release create "build-${{ github.run_number }}" app.ipa \
             --title "$APP_NAME (build ${{ github.run_number }})" \

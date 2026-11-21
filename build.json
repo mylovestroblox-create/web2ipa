@@ -1,0 +1,9 @@
+{
+  "app_name": "My App",
+  "bundle_id": "com.example.webapp",
+  "url": "",
+  "theme_color": "#0A84FF",
+  "appearance": "system",
+  "show_toolbar": true,
+  "nonce": "init"
+}
