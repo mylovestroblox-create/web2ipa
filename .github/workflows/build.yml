@@ -1,0 +1,74 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Название приложения"
+        required: true
+        default: "My App"
+      bundle_id:
+        description: "Bundle ID (например com.example.myapp)"
+        required: true
+        default: "com.example.webapp"
+      url:
+        description: "Ссылка на сайт (пусто = использовать папку site/ из репозитория)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Write config
+        env:
+          URL: ${{ inputs.url }}
+        run: |
+          jq -n --arg url "$URL" '{url: $url}' > App/Config.json
+          mkdir -p site
+          if [ -z "$(ls -A site 2>/dev/null)" ]; then
+            echo "<!DOCTYPE html><html><body></body></html>" > site/index.html
+          fi
+
+      - name: Prepare icon
+        run: |
+          if [ -f icon.png ]; then
+            sips -z 1024 1024 icon.png --out App/Assets.xcassets/AppIcon.appiconset/icon.png
+          fi
+
+      - name: Generate Xcode project
+        env:
+          APP_NAME: ${{ inputs.app_name }}
+          BUNDLE_ID: ${{ inputs.bundle_id }}
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -project WebApp.xcodeproj \
+            -scheme WebApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          APP=$(find build/Build/Products -maxdepth 2 -name "*.app" | head -n 1)
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry app.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa
+          path: app.ipa
