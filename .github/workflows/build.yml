@@ -60,7 +60,7 @@ jobs:
         run: |
           if [ "$EVENT" = "push" ]; then
             J=build.json
-            NAME=$(jq -r '.app_name ' $J)
+            NAME=$(jq -r '.app_name // "web2ipa"' $J)
             BUNDLE=$(jq -r '.bundle_id // "com.web2.ipa"' $J)
             URL=$(jq -r '.url // ""' $J)
             THEME=$(jq -r '.theme_color // "#0A84FF"' $J)
